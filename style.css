@@ -220,3 +220,115 @@ kbd {
 #restart-btn:hover {
   background: var(--btn-hover-bg);
 }
+
+#start-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--overlay-title-color);
+}
+
+.overlay-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.secondary-btn {
+  background: transparent;
+  color: var(--label-color);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.secondary-btn:hover {
+  color: var(--overlay-title-color);
+  border-color: var(--overlay-title-color);
+}
+
+.name-entry {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.name-entry.hidden {
+  display: none;
+}
+
+#name-input {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--kbd-border);
+  background: var(--kbd-bg);
+  color: var(--fg);
+  width: 140px;
+}
+
+#submit-score-btn {
+  background: var(--btn-bg);
+  color: var(--btn-color);
+  border: none;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#submit-score-btn:hover {
+  background: var(--btn-hover-bg);
+}
+
+.highscores {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.highscore-list {
+  list-style: none;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+}
+
+.highscore-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: var(--fg);
+}
+
+.highscore-list li.empty {
+  justify-content: center;
+  color: var(--label-color);
+}
+
+.highscore-list li.highlight {
+  background: var(--overlay-score-color);
+  color: var(--btn-color);
+  font-weight: 700;
+}
+
+.bests-line {
+  font-size: 11px;
+  color: var(--label-color);
+  letter-spacing: 0.5px;
+}
