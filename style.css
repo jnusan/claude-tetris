@@ -140,6 +140,21 @@ body {
   border-radius: 4px;
 }
 
+.skin-select {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  color: var(--fg);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.skin-select:focus {
+  outline: 1px solid var(--value-color);
+}
+
 /* ---- Controles ---- */
 .controls ul {
   list-style: none;
