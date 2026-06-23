@@ -48,11 +48,23 @@ const nameInput = document.getElementById('name-input');
 const submitScoreBtn = document.getElementById('submit-score-btn');
 const highscoreList = document.getElementById('highscore-list');
 const bestsLine = document.getElementById('bests-line');
+const overlayHighscores = document.getElementById('overlay-highscores');
+const overlayGameOverActions = document.getElementById('overlay-gameover-actions');
 const startOverlay = document.getElementById('start-overlay');
 const startHighscoreList = document.getElementById('start-highscore-list');
 const startBestsLine = document.getElementById('start-bests-line');
 const startResetScoresBtn = document.getElementById('start-reset-scores-btn');
 const playBtn = document.getElementById('play-btn');
+const pauseMenu = document.getElementById('pause-menu');
+const pauseControls = document.getElementById('pause-controls');
+const startLevelSelect = document.getElementById('start-level-select');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const toggleControlsBtn = document.getElementById('toggle-controls-btn');
+
+const START_LEVEL_STORAGE_KEY = 'tetris-start-level';
+let startLevel = parseInt(localStorage.getItem(START_LEVEL_STORAGE_KEY), 10) || 1;
+startLevelSelect.value = startLevel;
 
 const THEME_STORAGE_KEY = 'tetris-theme';
 const HIGHSCORES_STORAGE_KEY = 'tetris-highscores';
@@ -342,6 +354,9 @@ function endGame() {
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  pauseMenu.classList.add('hidden');
+  overlayHighscores.classList.remove('hidden');
+  overlayGameOverActions.classList.remove('hidden');
 
   const data = loadHighScoreData();
   const qualifies = qualifiesForHighScore(score, data);
@@ -376,14 +391,26 @@ function togglePause() {
   if (!started || gameOver) return;
   paused = !paused;
   if (!paused) {
-    lastTime = performance.now();
-    loop(lastTime);
+    closePauseMenu();
   } else {
     cancelAnimationFrame(animId);
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
+    nameEntry.classList.add('hidden');
+    overlayHighscores.classList.add('hidden');
+    overlayGameOverActions.classList.add('hidden');
+    pauseControls.classList.add('hidden');
+    pauseMenu.classList.remove('hidden');
     overlay.classList.remove('hidden');
   }
+}
+
+function closePauseMenu() {
+  paused = false;
+  overlay.classList.add('hidden');
+  pauseMenu.classList.add('hidden');
+  lastTime = performance.now();
+  loop(lastTime);
 }
 
 function loop(ts) {
@@ -408,11 +435,11 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  level = startLevel;
   maxCombo = 0;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
@@ -426,7 +453,7 @@ function init() {
 
 document.addEventListener('keydown', e => {
   if (!started) return;
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -452,5 +479,21 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 playBtn.addEventListener('click', init);
+
+resumeBtn.addEventListener('click', () => {
+  if (!gameOver) closePauseMenu();
+});
+
+pauseRestartBtn.addEventListener('click', init);
+
+toggleControlsBtn.addEventListener('click', () => {
+  pauseControls.classList.toggle('hidden');
+});
+
+startLevelSelect.addEventListener('change', () => {
+  const parsed = parseInt(startLevelSelect.value, 10);
+  startLevel = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  localStorage.setItem(START_LEVEL_STORAGE_KEY, String(startLevel));
+});
 
 renderHighScores();
