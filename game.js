@@ -30,6 +30,9 @@ const PIECES = [
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
+const START_LEVEL_KEY = 'tetris-start-level';
+const MIN_LEVEL = 1, MAX_LEVEL = 20;
+
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
@@ -42,6 +45,16 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggleBtn = document.getElementById('theme-toggle');
+const pauseOverlay = document.getElementById('pause-overlay');
+const pauseMain = document.getElementById('pause-main');
+const pauseControls = document.getElementById('pause-controls');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const showControlsBtn = document.getElementById('show-controls-btn');
+const controlsBackBtn = document.getElementById('controls-back-btn');
+const levelDecBtn = document.getElementById('level-dec');
+const levelIncBtn = document.getElementById('level-inc');
+const startLevelValueEl = document.getElementById('start-level-value');
 
 const THEME_STORAGE_KEY = 'tetris-theme';
 let gridLineColor = '#22222e';
@@ -65,7 +78,18 @@ themeToggleBtn.addEventListener('click', () => {
 
 applyTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'dark');
 
+let startLevel = clampLevel(parseInt(localStorage.getItem(START_LEVEL_KEY), 10) || 1);
+startLevelValueEl.textContent = startLevel;
+
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+
+function clampLevel(n) { return Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, n || 1)); }
+function dropIntervalForLevel(lvl) { return Math.max(100, 1000 - (lvl - 1) * 90); }
+function setStartLevel(n) {
+  startLevel = clampLevel(n);
+  localStorage.setItem(START_LEVEL_KEY, startLevel);
+  startLevelValueEl.textContent = startLevel;
+}
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -132,7 +156,7 @@ function clearLines() {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    dropInterval = dropIntervalForLevel(level);
     updateHUD();
   }
 }
@@ -255,13 +279,16 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    pauseOverlay.classList.add('hidden');
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    // Mostrar siempre la pantalla principal al abrir el menú
+    pauseMain.classList.remove('hidden');
+    pauseControls.classList.add('hidden');
+    startLevelValueEl.textContent = startLevel;
+    pauseOverlay.classList.remove('hidden');
   }
 }
 
@@ -286,22 +313,23 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  level = startLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = dropIntervalForLevel(startLevel);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  pauseOverlay.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -326,5 +354,27 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+resumeBtn.addEventListener('click', () => {
+  document.activeElement.blur();
+  togglePause();
+});
+pauseRestartBtn.addEventListener('click', () => {
+  document.activeElement.blur();
+  paused = false;
+  init();
+});
+showControlsBtn.addEventListener('click', () => {
+  document.activeElement.blur();
+  pauseMain.classList.add('hidden');
+  pauseControls.classList.remove('hidden');
+});
+controlsBackBtn.addEventListener('click', () => {
+  document.activeElement.blur();
+  pauseControls.classList.add('hidden');
+  pauseMain.classList.remove('hidden');
+});
+levelDecBtn.addEventListener('click', () => { document.activeElement.blur(); setStartLevel(startLevel - 1); });
+levelIncBtn.addEventListener('click', () => { document.activeElement.blur(); setStartLevel(startLevel + 1); });
 
 init();
