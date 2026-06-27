@@ -102,10 +102,10 @@ themeToggleBtn.addEventListener('click', () => {
 
 skinSelect.addEventListener('change', e => applySkin(e.target.value));
 
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+
 applyTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'dark');
 applySkin(skin);
-
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
