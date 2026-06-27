@@ -16,29 +16,7 @@ const COLORS = [
   '#90a4ae', // Tuerca - gris metálico
 ];
 
-const PIECES = [
-  null,
-  [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], // I
-  [[2,2],[2,2]],                               // O
-  [[0,3,0],[3,3,3],[0,0,0]],                  // T
-  [[0,4,4],[4,4,0],[0,0,0]],                  // S
-  [[5,5,0],[0,5,5],[0,0,0]],                  // Z
-  [[6,0,0],[6,6,6],[0,0,0]],                  // J
-  [[0,0,7],[7,7,7],[0,0,0]],                  // L
-  [[8,8,8],[8,0,8],[8,8,8]],                  // Tuerca (anillo 3x3, hueco central)
-];
-
-const LINE_SCORES = [0, 100, 300, 500, 800];
-
-const THEME_STORAGE_KEY = 'tetris-theme';
-const SKIN_STORAGE_KEY  = 'tetris-skin';
-const START_LEVEL_KEY   = 'tetris-start-level';
-const RECORDS_KEY       = 'tetris-records';
-const LAST_NAME_KEY     = 'tetris-last-name';
-const MIN_LEVEL = 1, MAX_LEVEL = 20;
-
-// Skins: cada uno define paleta de colores (índices 1-8), estilo de dibujo,
-// y opcionalmente fondo del tablero y color de rejilla.
+// Skins: cada uno define paleta, estilo de dibujo, fondo y rejilla opcionales.
 const SKINS = {
   retro: {
     label: 'Retro', style: 'flat', colors: COLORS,
@@ -60,6 +38,27 @@ const SKINS = {
     boardBg: null, grid: null,
   },
 };
+
+const PIECES = [
+  null,
+  [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], // I
+  [[2,2],[2,2]],                               // O
+  [[0,3,0],[3,3,3],[0,0,0]],                  // T
+  [[0,4,4],[4,4,0],[0,0,0]],                  // S
+  [[5,5,0],[0,5,5],[0,0,0]],                  // Z
+  [[6,0,0],[6,6,6],[0,0,0]],                  // J
+  [[0,0,7],[7,7,7],[0,0,0]],                  // L
+  [[8,8,8],[8,0,8],[8,8,8]],                  // Tuerca (anillo 3x3, hueco central)
+];
+
+const LINE_SCORES = [0, 100, 300, 500, 800];
+
+const THEME_STORAGE_KEY = 'tetris-theme';
+const SKIN_STORAGE_KEY  = 'tetris-skin';
+const START_LEVEL_KEY   = 'tetris-start-level';
+const RECORDS_KEY       = 'tetris-records';
+const LAST_NAME_KEY     = 'tetris-last-name';
+const MIN_LEVEL = 1, MAX_LEVEL = 20;
 
 // ---- DOM ----
 const canvas       = document.getElementById('board');
@@ -89,15 +88,15 @@ const levelIncBtn     = document.getElementById('level-inc');
 const startLevelValueEl = document.getElementById('start-level-value');
 
 // Récords
-const startOverlay        = document.getElementById('start-overlay');
-const startRecordsEl      = document.getElementById('start-records');
-const playBtn             = document.getElementById('play-btn');
+const startOverlay         = document.getElementById('start-overlay');
+const startRecordsEl       = document.getElementById('start-records');
+const playBtn              = document.getElementById('play-btn');
 const resetRecordsStartBtn = document.getElementById('reset-records-start-btn');
-const nameEntry           = document.getElementById('name-entry');
-const nameInput           = document.getElementById('name-input');
-const saveRecordBtn       = document.getElementById('save-record-btn');
-const goRecordsEl         = document.getElementById('go-records');
-const resetRecordsGoBtn   = document.getElementById('reset-records-go-btn');
+const nameEntry            = document.getElementById('name-entry');
+const nameInput            = document.getElementById('name-input');
+const saveRecordBtn        = document.getElementById('save-record-btn');
+const goRecordsEl          = document.getElementById('go-records');
+const resetRecordsGoBtn    = document.getElementById('reset-records-go-btn');
 
 // ---- Tema y skin ----
 let skin = SKINS[localStorage.getItem(SKIN_STORAGE_KEY)] ? localStorage.getItem(SKIN_STORAGE_KEY) : 'retro';
