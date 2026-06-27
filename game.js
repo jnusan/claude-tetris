@@ -30,33 +30,77 @@ const PIECES = [
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
-const START_LEVEL_KEY = 'tetris-start-level';
+const THEME_STORAGE_KEY = 'tetris-theme';
+const SKIN_STORAGE_KEY  = 'tetris-skin';
+const START_LEVEL_KEY   = 'tetris-start-level';
+const RECORDS_KEY       = 'tetris-records';
+const LAST_NAME_KEY     = 'tetris-last-name';
 const MIN_LEVEL = 1, MAX_LEVEL = 20;
 
-const canvas = document.getElementById('board');
-const ctx = canvas.getContext('2d');
-const nextCanvas = document.getElementById('next-canvas');
-const nextCtx = nextCanvas.getContext('2d');
-const scoreEl = document.getElementById('score');
-const linesEl = document.getElementById('lines');
-const levelEl = document.getElementById('level');
-const overlay = document.getElementById('overlay');
+// Skins: cada uno define paleta de colores (índices 1-8), estilo de dibujo,
+// y opcionalmente fondo del tablero y color de rejilla.
+const SKINS = {
+  retro: {
+    label: 'Retro', style: 'flat', colors: COLORS,
+    boardBg: null, grid: null,
+  },
+  neon: {
+    label: 'Neon', style: 'neon',
+    colors: [null, '#00f5ff', '#ffe600', '#cc00ff', '#00ff66', '#ff0055', '#0088ff', '#ff6600', '#b0b0cc'],
+    boardBg: '#000000', grid: '#0d0d0d',
+  },
+  pastel: {
+    label: 'Pastel', style: 'rounded',
+    colors: [null, '#a8d8ea', '#ffeaa7', '#dda0dd', '#b2dfdb', '#f8c8c8', '#b0c4de', '#ffd8a8', '#d4d4d4'],
+    boardBg: null, grid: null,
+  },
+  pixel: {
+    label: 'Pixel art', style: 'pixel',
+    colors: [null, '#00aacc', '#ddcc00', '#9900cc', '#00aa44', '#cc0022', '#0044cc', '#cc6600', '#778899'],
+    boardBg: null, grid: null,
+  },
+};
+
+// ---- DOM ----
+const canvas       = document.getElementById('board');
+const ctx          = canvas.getContext('2d');
+const nextCanvas   = document.getElementById('next-canvas');
+const nextCtx      = nextCanvas.getContext('2d');
+const scoreEl      = document.getElementById('score');
+const linesEl      = document.getElementById('lines');
+const levelEl      = document.getElementById('level');
+const overlay      = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
-const restartBtn = document.getElementById('restart-btn');
+const restartBtn   = document.getElementById('restart-btn');
 const themeToggleBtn = document.getElementById('theme-toggle');
-const pauseOverlay = document.getElementById('pause-overlay');
-const pauseMain = document.getElementById('pause-main');
-const pauseControls = document.getElementById('pause-controls');
-const resumeBtn = document.getElementById('resume-btn');
+const skinSelect   = document.getElementById('skin-select');
+
+// Menú de pausa
+const pauseOverlay    = document.getElementById('pause-overlay');
+const pauseMain       = document.getElementById('pause-main');
+const pauseControls   = document.getElementById('pause-controls');
+const resumeBtn       = document.getElementById('resume-btn');
 const pauseRestartBtn = document.getElementById('pause-restart-btn');
 const showControlsBtn = document.getElementById('show-controls-btn');
 const controlsBackBtn = document.getElementById('controls-back-btn');
-const levelDecBtn = document.getElementById('level-dec');
-const levelIncBtn = document.getElementById('level-inc');
+const levelDecBtn     = document.getElementById('level-dec');
+const levelIncBtn     = document.getElementById('level-inc');
 const startLevelValueEl = document.getElementById('start-level-value');
 
-const THEME_STORAGE_KEY = 'tetris-theme';
+// Récords
+const startOverlay        = document.getElementById('start-overlay');
+const startRecordsEl      = document.getElementById('start-records');
+const playBtn             = document.getElementById('play-btn');
+const resetRecordsStartBtn = document.getElementById('reset-records-start-btn');
+const nameEntry           = document.getElementById('name-entry');
+const nameInput           = document.getElementById('name-input');
+const saveRecordBtn       = document.getElementById('save-record-btn');
+const goRecordsEl         = document.getElementById('go-records');
+const resetRecordsGoBtn   = document.getElementById('reset-records-go-btn');
+
+// ---- Tema y skin ----
+let skin = SKINS[localStorage.getItem(SKIN_STORAGE_KEY)] ? localStorage.getItem(SKIN_STORAGE_KEY) : 'retro';
 let gridLineColor = '#22222e';
 
 function readGridLineColor() {
@@ -69,6 +113,16 @@ function applyTheme(theme) {
   themeToggleBtn.setAttribute('aria-label', theme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
   localStorage.setItem(THEME_STORAGE_KEY, theme);
   gridLineColor = readGridLineColor();
+  // Preservar el override de rejilla del skin activo
+  if (SKINS[skin] && SKINS[skin].grid) gridLineColor = SKINS[skin].grid;
+}
+
+function applySkin(name) {
+  skin = SKINS[name] ? name : 'retro';
+  localStorage.setItem(SKIN_STORAGE_KEY, skin);
+  gridLineColor = SKINS[skin].grid || readGridLineColor();
+  skinSelect.value = skin;
+  if (typeof current !== 'undefined' && current && next) { draw(); drawNext(); }
 }
 
 themeToggleBtn.addEventListener('click', () => {
@@ -76,13 +130,88 @@ themeToggleBtn.addEventListener('click', () => {
   applyTheme(isLight ? 'dark' : 'light');
 });
 
+skinSelect.addEventListener('change', e => applySkin(e.target.value));
+
 applyTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'dark');
+applySkin(skin);
 
-let startLevel = clampLevel(parseInt(localStorage.getItem(START_LEVEL_KEY), 10) || 1);
-startLevelValueEl.textContent = startLevel;
+// ---- Récords en localStorage ----
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+function defaultRecords() {
+  return { scores: [], bestCombo: 0, bestLines: 0 };
+}
 
+function loadRecords() {
+  try {
+    const raw = localStorage.getItem(RECORDS_KEY);
+    if (!raw) return defaultRecords();
+    const data = JSON.parse(raw);
+    return {
+      scores: Array.isArray(data.scores) ? data.scores : [],
+      bestCombo: data.bestCombo || 0,
+      bestLines: data.bestLines || 0,
+    };
+  } catch (_) {
+    return defaultRecords();
+  }
+}
+
+function saveRecords(data) {
+  localStorage.setItem(RECORDS_KEY, JSON.stringify(data));
+}
+
+function qualifiesTop(sc) {
+  const data = loadRecords();
+  return data.scores.length < 5 || sc > data.scores[data.scores.length - 1].score;
+}
+
+function addRecord(entry) {
+  const data = loadRecords();
+  data.scores.push(entry);
+  data.scores.sort((a, b) => b.score - a.score);
+  if (data.scores.length > 5) data.scores.length = 5;
+  saveRecords(data);
+  return data.scores.findIndex(e => e === entry);
+}
+
+function resetRecords() {
+  localStorage.removeItem(RECORDS_KEY);
+}
+
+function renderRecords(containerEl, highlightIndex = -1) {
+  const data = loadRecords();
+  let html = '';
+
+  if (data.scores.length === 0) {
+    html += '<p class="records-empty">Sin récords aún</p>';
+  } else {
+    html += '<table class="records-table">';
+    html += '<thead><tr><th>#</th><th>NOMBRE</th><th>SCORE</th><th>LÍNEAS</th></tr></thead>';
+    html += '<tbody>';
+    data.scores.forEach((entry, i) => {
+      const cls = i === highlightIndex ? ' class="record-highlight"' : '';
+      html += `<tr${cls}><td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.score.toLocaleString()}</td><td>${entry.lines}</td></tr>`;
+    });
+    html += '</tbody></table>';
+  }
+
+  html += '<div class="records-stats">';
+  html += `<span>Mejor combo: ${data.bestCombo}</span>`;
+  html += `<span>Máx. líneas: ${data.bestLines}</span>`;
+  html += '</div>';
+
+  containerEl.innerHTML = html;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ---- Helpers de nivel ----
 function clampLevel(n) { return Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, n || 1)); }
 function dropIntervalForLevel(lvl) { return Math.max(100, 1000 - (lvl - 1) * 90); }
 function setStartLevel(n) {
@@ -90,6 +219,13 @@ function setStartLevel(n) {
   localStorage.setItem(START_LEVEL_KEY, startLevel);
   startLevelValueEl.textContent = startLevel;
 }
+
+// ---- Estado del juego ----
+let startLevel = clampLevel(parseInt(localStorage.getItem(START_LEVEL_KEY), 10) || 1);
+startLevelValueEl.textContent = startLevel;
+
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let combo, gameMaxCombo;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -159,6 +295,7 @@ function clearLines() {
     dropInterval = dropIntervalForLevel(level);
     updateHUD();
   }
+  return cleared;
 }
 
 function ghostY() {
@@ -186,7 +323,13 @@ function softDrop() {
 
 function lockPiece() {
   merge();
-  clearLines();
+  const cleared = clearLines();
+  if (cleared > 0) {
+    combo++;
+    if (combo > gameMaxCombo) gameMaxCombo = combo;
+  } else {
+    combo = 0;
+  }
   spawn();
 }
 
@@ -207,14 +350,79 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
-  context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  const skinDef = SKINS[skin];
+  const color = skinDef.colors[colorIndex];
+  const a = alpha ?? 1;
+  const px = x * size + 1;
+  const py = y * size + 1;
+  const pw = size - 2;
+  const ph = size - 2;
+
+  context.globalAlpha = a;
+
+  switch (skinDef.style) {
+    case 'flat':
+      context.fillStyle = color;
+      context.fillRect(px, py, pw, ph);
+      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillRect(px, py, pw, 4);
+      break;
+
+    case 'neon': {
+      context.fillStyle = '#0a0a0a';
+      context.fillRect(px, py, pw, ph);
+      context.shadowColor = color;
+      context.shadowBlur = size * 0.5;
+      context.strokeStyle = color;
+      context.lineWidth = 2;
+      context.strokeRect(px + 1, py + 1, pw - 2, ph - 2);
+      context.shadowBlur = 0;
+      context.fillStyle = color;
+      context.globalAlpha = a * 0.25;
+      context.fillRect(px + 3, py + 3, pw - 6, ph - 6);
+      break;
+    }
+
+    case 'rounded': {
+      const rad = size * 0.25;
+      context.fillStyle = color;
+      context.beginPath();
+      if (context.roundRect) {
+        context.roundRect(px, py, pw, ph, rad);
+      } else {
+        context.moveTo(px + rad, py);
+        context.lineTo(px + pw - rad, py);
+        context.arcTo(px + pw, py,      px + pw, py + rad,    rad);
+        context.lineTo(px + pw, py + ph - rad);
+        context.arcTo(px + pw, py + ph, px + pw - rad, py + ph, rad);
+        context.lineTo(px + rad, py + ph);
+        context.arcTo(px, py + ph,      px, py + ph - rad,    rad);
+        context.lineTo(px, py + rad);
+        context.arcTo(px, py,           px + rad, py,         rad);
+        context.closePath();
+      }
+      context.fill();
+      context.fillStyle = 'rgba(255,255,255,0.22)';
+      context.fillRect(px + rad, py + 1, pw - rad * 2, 4);
+      break;
+    }
+
+    case 'pixel':
+      context.fillStyle = color;
+      context.fillRect(px, py, pw, ph);
+      context.fillStyle = 'rgba(0,0,0,0.45)';
+      context.fillRect(px,          py,          pw, 2);
+      context.fillRect(px,          py,          2,  ph);
+      context.fillRect(px,          py + ph - 2, pw, 2);
+      context.fillRect(px + pw - 2, py,          2,  ph);
+      context.fillStyle = 'rgba(255,255,255,0.55)';
+      context.fillRect(px + 2, py + 2, Math.floor(pw / 3), 2);
+      context.fillRect(px + 2, py + 2, 2, Math.floor(ph / 3));
+      break;
+  }
+
   context.globalAlpha = 1;
+  context.shadowBlur = 0;
 }
 
 function drawGrid() {
@@ -236,6 +444,11 @@ function drawGrid() {
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const boardBg = SKINS[skin].boardBg;
+  if (boardBg) {
+    ctx.fillStyle = boardBg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
   drawGrid();
 
   // board
@@ -270,8 +483,29 @@ function drawNext() {
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
+
+  // Actualizar récords globales (combo y líneas)
+  const data = loadRecords();
+  if (gameMaxCombo > data.bestCombo) data.bestCombo = gameMaxCombo;
+  if (lines > data.bestLines) data.bestLines = lines;
+  saveRecords(data);
+
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+
+  if (qualifiesTop(score)) {
+    nameInput.value = localStorage.getItem(LAST_NAME_KEY) || '';
+    nameEntry.classList.remove('hidden');
+    goRecordsEl.classList.add('hidden');
+    resetRecordsGoBtn.classList.add('hidden');
+    setTimeout(() => nameInput.focus(), 50);
+  } else {
+    nameEntry.classList.add('hidden');
+    renderRecords(goRecordsEl);
+    goRecordsEl.classList.remove('hidden');
+    resetRecordsGoBtn.classList.remove('hidden');
+  }
+
   overlay.classList.remove('hidden');
 }
 
@@ -284,7 +518,6 @@ function togglePause() {
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    // Mostrar siempre la pantalla principal al abrir el menú
     pauseMain.classList.remove('hidden');
     pauseControls.classList.add('hidden');
     startLevelValueEl.textContent = startLevel;
@@ -314,6 +547,8 @@ function init() {
   score = 0;
   lines = 0;
   level = startLevel;
+  combo = 0;
+  gameMaxCombo = 0;
   paused = false;
   gameOver = false;
   dropInterval = dropIntervalForLevel(startLevel);
@@ -324,10 +559,17 @@ function init() {
   updateHUD();
   overlay.classList.add('hidden');
   pauseOverlay.classList.add('hidden');
+  startOverlay.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
+function showStartScreen() {
+  renderRecords(startRecordsEl);
+  startOverlay.classList.remove('hidden');
+}
+
+// ---- Teclado ----
 document.addEventListener('keydown', e => {
   if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
   if (paused || gameOver) return;
@@ -353,6 +595,8 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
+// ---- Handlers de botones ----
+playBtn.addEventListener('click', init);
 restartBtn.addEventListener('click', init);
 
 resumeBtn.addEventListener('click', () => {
@@ -377,4 +621,31 @@ controlsBackBtn.addEventListener('click', () => {
 levelDecBtn.addEventListener('click', () => { document.activeElement.blur(); setStartLevel(startLevel - 1); });
 levelIncBtn.addEventListener('click', () => { document.activeElement.blur(); setStartLevel(startLevel + 1); });
 
-init();
+saveRecordBtn.addEventListener('click', () => {
+  const name = nameInput.value.trim() || 'Anónimo';
+  localStorage.setItem(LAST_NAME_KEY, name);
+  const highlightIdx = addRecord({ name, score, lines, level });
+  nameEntry.classList.add('hidden');
+  renderRecords(goRecordsEl, highlightIdx);
+  goRecordsEl.classList.remove('hidden');
+  resetRecordsGoBtn.classList.remove('hidden');
+});
+
+nameInput.addEventListener('keydown', e => {
+  if (e.code === 'Enter') saveRecordBtn.click();
+});
+
+resetRecordsStartBtn.addEventListener('click', () => {
+  if (!confirm('¿Resetear todos los récords?')) return;
+  resetRecords();
+  renderRecords(startRecordsEl);
+});
+
+resetRecordsGoBtn.addEventListener('click', () => {
+  if (!confirm('¿Resetear todos los récords?')) return;
+  resetRecords();
+  renderRecords(goRecordsEl);
+});
+
+// ---- Arranque ----
+showStartScreen();

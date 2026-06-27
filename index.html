@@ -32,6 +32,16 @@
           <canvas id="next-canvas" width="120" height="120"></canvas>
         </div>
 
+        <div class="panel-section">
+          <span class="label">SKIN</span>
+          <select id="skin-select" class="skin-select">
+            <option value="retro">Retro</option>
+            <option value="neon">Neon</option>
+            <option value="pastel">Pastel</option>
+            <option value="pixel">Pixel art</option>
+          </select>
+        </div>
+
         <div class="panel-section controls">
           <span class="label">CONTROLS</span>
           <ul>
@@ -45,11 +55,36 @@
       </aside>
     </div>
 
+    <!-- Pantalla de inicio -->
+    <div id="start-overlay" class="overlay">
+      <div class="overlay-box start-box">
+        <p class="start-title">TOP 5</p>
+        <div id="start-records" class="records-container"></div>
+        <button id="play-btn" class="btn-primary">Jugar</button>
+        <button id="reset-records-start-btn" class="btn-secondary">Resetear récords</button>
+      </div>
+    </div>
+
+    <!-- Overlay de pausa / game over -->
     <div id="overlay" class="overlay hidden">
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
-        <button id="restart-btn">Reiniciar</button>
+
+        <!-- Entrada de nombre (solo en game over si entra al Top 5) -->
+        <div id="name-entry" class="name-entry hidden">
+          <p class="new-record-label">¡Nuevo récord!</p>
+          <div class="name-entry-row">
+            <input id="name-input" type="text" maxlength="12" placeholder="Tu nombre" />
+            <button id="save-record-btn" class="btn-primary">Guardar</button>
+          </div>
+        </div>
+
+        <!-- Tabla de récords en game over -->
+        <div id="go-records" class="records-container hidden"></div>
+
+        <button id="restart-btn" class="btn-primary">Reiniciar</button>
+        <button id="reset-records-go-btn" class="btn-secondary hidden">Resetear récords</button>
       </div>
     </div>
 
