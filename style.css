@@ -140,6 +140,30 @@ body {
   border-radius: 4px;
 }
 
+/* ---- Selector de skin ---- */
+.skin-select {
+  appearance: none;
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 4px;
+  color: var(--fg);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 5px 8px;
+  cursor: pointer;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+
+.skin-select:focus {
+  outline: none;
+  border-color: var(--value-color);
+}
+
+.skin-select:hover {
+  border-color: var(--value-color);
+}
+
 /* ---- Controles ---- */
 .controls ul {
   list-style: none;
